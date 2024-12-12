@@ -13,7 +13,7 @@ const Auth = new Elysia({ name: "auth", prefix: "auth" })
       email:    t.String({ minLength: 1 }),
       password: t.String({ minLength: 8 })
     }),
-    user: t.Object({
+    register: t.Object({
       email:      t.String({ minLength: 1 }),
       password:   t.String({ minLength: 8 }),
       lastname:   t.String({ minLength: 1 }),
@@ -29,7 +29,6 @@ const Auth = new Elysia({ name: "auth", prefix: "auth" })
       onBeforeHandle(async ({ jwt, error, cookie: { token } }) => {
         if(!token.value)
           return error(401, {
-            success: false,
             message: "Unauthorized"
           })
 
@@ -38,7 +37,6 @@ const Auth = new Elysia({ name: "auth", prefix: "auth" })
 
         if(!email)
           return error(401, {
-            success: false,
             message: "Unauthorized"
           })
       });
@@ -55,7 +53,6 @@ const Auth = new Elysia({ name: "auth", prefix: "auth" })
     // No user
     if(!user) {
       return error(404, {
-        success: false,
         message: "No user found with this email"
       })
     }
@@ -64,7 +61,6 @@ const Auth = new Elysia({ name: "auth", prefix: "auth" })
     const isEqual = await Bun.password.verify(password, user.password);
     if(!isEqual) {
       return error(404, {
-        success: false,
         message: "Invalid password"
       })
     }
@@ -75,7 +71,6 @@ const Auth = new Elysia({ name: "auth", prefix: "auth" })
 
     set.status = 200
     return {
-      success: true,
       message: "Authentication success"
     }
     
@@ -94,7 +89,6 @@ const Auth = new Elysia({ name: "auth", prefix: "auth" })
 
     if(!tmp) {
       return error(409, {
-        success: false,
         message: "A user with this email already exists"
       })
     }
@@ -110,13 +104,12 @@ const Auth = new Elysia({ name: "auth", prefix: "auth" })
     });
 
     return {
-      success: true,
       message: "Registration success",
       data: user
     }    
 
   }, {
-    body: "user"
-  })
+    body: "register"
+  });
 
 export default Auth;

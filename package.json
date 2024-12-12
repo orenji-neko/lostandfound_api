@@ -10,6 +10,7 @@
     "@elysiajs/jwt": "^1.1.1",
     "@elysiajs/swagger": "^1.1.6",
     "@prisma/client": "^6.0.1",
+    "chalk": "^5.3.0",
     "elysia": "latest"
   },
   "devDependencies": {
