@@ -8,4 +8,4 @@ bun run dev
 ```
 
 ## API Documentation
-While the server is running, open http:localhost:3000/swagger to show the generated docs.
+While the server is running, open http://localhost:3000/swagger to show the generated docs.
