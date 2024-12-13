@@ -3,8 +3,8 @@ import chalk from "chalk";
 import { Elysia } from "elysia";
 
 // Custom Plugins
-import Session from "./session";
-import Logging from "./logging";
+import Session from "./plugins/session";
+import Logging from "./plugins/logging";
 
 // Routes
 import User from "./api/user";

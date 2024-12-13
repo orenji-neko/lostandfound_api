@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import Session from "../session";
+import Session from "../plugins/session";
 import path from 'path';
 
 const File = new Elysia({ prefix: "file" })

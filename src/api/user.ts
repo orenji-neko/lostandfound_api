@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import Session from "../session";
+import Session from "../plugins/session";
 import { PrismaClient, Prisma, User } from "@prisma/client";
 
 const User = new Elysia({ prefix: "users" })
