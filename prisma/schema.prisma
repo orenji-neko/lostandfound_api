@@ -19,5 +19,20 @@ model User {
   lastname    String
   phone       String
   is_active   Boolean   @default(false)
+
+  items       Item[]
+}
+
+model Item {
+  id          String    @id @default(uuid())
+  title       String    
+  description String    
+  status      String    @default("Unknown")
+  type        String
+
+  created_at  DateTime  @default(now())
+  
+  createdBy   User      @relation(fields: [creatorId], references: [id])
+  creatorId   String
 }
 
