@@ -42,7 +42,7 @@ const Session = new Elysia({ name: "auth", prefix: "auth" })
       });
     }
   }))
-  .derive({ as: "global" }, async ({ jwt, cookie: { token } }) => {
+  .derive({ as: "global" }, async ({ jwt, prisma, cookie: { token } }) => {
     const profile = await jwt.verify(token.value);
     const { id, email } = profile as { id: string, email: string };
 
@@ -58,11 +58,14 @@ const Session = new Elysia({ name: "auth", prefix: "auth" })
       }
     }
 
-    return {
-      user: {
-        id: id,
-        email: email
+    const user = await prisma.user.findUnique({
+      where: {
+        id: id
       }
+    });
+
+    return {
+      user: user
     }
   })
   .as("global");

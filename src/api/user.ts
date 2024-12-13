@@ -1,6 +1,8 @@
-import { Elysia, t } from "elysia";
+import { Elysia, error, t } from "elysia";
 import Session from "../plugins/session";
 import { PrismaClient, Prisma, User } from "@prisma/client";
+import { saveFile } from "../utils/file";
+import { DefaultArgs } from "@prisma/client/runtime/library";
 
 const User = new Elysia({ prefix: "users" })
   .decorate("prisma", new PrismaClient())
@@ -161,33 +163,131 @@ const User = new Elysia({ prefix: "users" })
     protected: true,
     body: "register"
   })
-  .delete("/:id", async ({ params: { id }, prisma, error }) => {
+  .put("/:id", async ({ params: { id }, prisma, body, user }) => {
+    const { email, password, lastname, firstname, phone, image, isAdmin } = body;
+
+    // If image exists, then save to file/
+    let filename: string = "";
+    if(image) 
+      filename = await saveFile(image);
+
+    const tmp = await prisma.user.findUnique({
+      where: {
+        id: id
+      }
+    });
+
+    if(!tmp) {
+      return error(404, {
+        message: "User not found"
+      })
+    }
+
+    // if not admin, and modifying other user's details
+    if(!user?.isAdmin && user?.id !== id)
+      return error(401, {
+        message: "Unauthorized"
+      });
+
+    let config: Prisma.UserUpdateArgs<DefaultArgs> = {
+      where: {
+        id: id
+      },
+      data: {
+        email:      email       ? email       : tmp.email,
+        password:   password    ? password    : tmp.password,
+        lastname:   lastname    ? lastname    : tmp.lastname,
+        firstname:  firstname   ? firstname   : tmp.firstname,
+        phone:      phone       ? phone       : tmp.phone,
+        profile:    image       ? filename    : tmp.profile
+      }
+    };
+
+    const newUser = await prisma.user.update(config);
+
+    return {
+      data: newUser
+    }
+  }, {
+    protected: true,
+    body: t.Object({
+      email:      t.Optional(t.String()),
+      password:   t.Optional(t.String()),
+      lastname:   t.Optional(t.String()),
+      firstname:  t.Optional(t.String()),
+      phone:      t.Optional(t.String()),
+      image:      t.Optional(t.File()),
+      isAdmin:    t.Optional(t.String())
+    })
+  })
+  .delete("/:id", async ({ params: { id }, prisma, error, user }) => {
+    // Validate user authorization
+    if (!user) {
+      return error(401, {
+        message: "Authentication required"
+      });
+    }
+
+    // Check if user is trying to delete themselves or if they're an admin
+    if (!user.isAdmin && user.id !== id) {
+      return error(403, {
+        message: "You are not authorized to delete this user"
+      });
+    }
+
     try {
-      const user = await prisma.user.delete({
+      // Attempt to find the user first to ensure they exist
+      const existingUser = await prisma.user.findUnique({
+        where: { id: id }
+      });
+
+      if (!existingUser) {
+        return error(404, {
+          message: "User not found"
+        });
+      }
+
+      // Proceed with user deletion
+      const deletedUser = await prisma.user.delete({
         where: {
           id: id
         }
       });
+
       return {
-        message: "User delete success",
-        data: user
-      }
+        message: "User deleted successfully",
+        data: deletedUser
+      };
     }
     catch(err) {
-      if(err instanceof Prisma.PrismaClientKnownRequestError) {
-        if(err.code === "P2025") {
-          return error(404, {
-            message: "User not found"
-          })
-        }
+      // Log the error for server-side tracking
+      console.error("User deletion error:", err);
 
-        return error(500, {
-          message: "Failed to delete user"
-        })
+      // Handle specific Prisma errors
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        switch(err.code) {
+          case "P2025": // Record not found
+            return error(404, {
+              message: "User not found"
+            });
+          case "P2003": // Foreign key constraint fails
+            return error(400, {
+              message: "Cannot delete user due to existing related records"
+            });
+          default:
+            return error(500, {
+              message: "Failed to delete user"
+            });
+        }
       }
+
+      // Catch any other unexpected errors
+      return error(500, {
+        message: "An unexpected error occurred"
+      });
     }
   }, {
     protected: true
-  })
+  });
 
 export default User;

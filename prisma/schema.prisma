@@ -15,8 +15,10 @@ model User {
   firstname   String
   lastname    String
   phone       String
-  is_active   Boolean   @default(false)
-  is_admin    Boolean   @default(false)
+  isActive    Boolean   @default(false)
+  isAdmin     Boolean   @default(false)
+
+  profile     String?
 
   items       Item[]
 }
