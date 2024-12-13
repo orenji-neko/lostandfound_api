@@ -1,15 +1,21 @@
 import swagger from "@elysiajs/swagger";
 import chalk from "chalk";
 import { Elysia } from "elysia";
-import Auth from "./auth";
-import User from "./api/user";
+
+// Custom Plugins
+import Session from "./session";
 import Logging from "./logging";
+
+// Routes
+import User from "./api/users";
+import Item from "./api/item";
 
 const app = new Elysia()
   .use(swagger())     // endpoint documentation
   .use(Logging)       // Logging
-  .use(Auth)          // Login API
+  .use(Session)       // Login API
   .use(User)          // User API
+  .use(Item)          // Item API
   .listen({hostname: "127.0.0.1", port: 3000});
 
 console.log(
