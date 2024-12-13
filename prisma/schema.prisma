@@ -28,7 +28,8 @@ model Item {
   status      String    @default("Unknown")
   type        String
   location    String
-  image       String?
+  images      ItemImage[]
+  isSuspended Boolean   @default(false)
 
   created_at  DateTime  @default(now())
   
@@ -37,6 +38,12 @@ model Item {
 
   category    Category? @relation(fields: [categoryId], references: [id])
   categoryId  String?
+}
+
+model ItemImage {
+  filename    String    @id
+  item        Item      @relation(fields: [itemId], references: [id])
+  itemId      String
 }
 
 model Category {

@@ -16,7 +16,12 @@ const Item = new Elysia({ prefix: "items" })
     const items = await prisma.item.findMany({
       include: {
         createdBy: true,
-        category: true
+        category: true,
+        images: {
+          select: {
+            filename: true
+          }
+        }
       }
     });
 
@@ -47,28 +52,35 @@ const Item = new Elysia({ prefix: "items" })
 
   })
   /**
-   * Create an item.
+   * Create item
    */
   .post("/", async ({ body, prisma, user }) => {
-    const { title, description, status, type, image, location } = body;
+    const { title, description, status, type, images, location } = body;
 
-    // Save image to file directory
-    const filename = await saveFile(image);
+    // Save images to file directory using Promise.all to properly handle async file uploads
+    const filenames = await Promise.all(
+      images.map(async (img) => await saveFile(img))
+    );
 
     // Create the item in the database with the hashed filename
     const item = await prisma.item.create({
       data: {
         title:        title,
         description:  description,
-        status:       status ? status : "Unknown",
-        type:         type ? type : "Unknown",
-        image:        filename, // Store the hashed filename
-        location:     location ? location : "Unknown",
+        status:       status || "Unknown",
+        type:         type || "Unknown",
+        images: {
+          create: filenames.map((filename) => ({ filename: filename }))
+        },
+        location:     location || "Unknown",
         createdBy: {
           connect: {
-            id:       user?.id // currently logged in user is made as creator of item
+            id: user?.id // currently logged in user is made as creator of item
           }
         }
+      },
+      include: {
+        images: true
       }
     });
 
@@ -83,7 +95,7 @@ const Item = new Elysia({ prefix: "items" })
       status:       t.Optional(t.String()),
       type:         t.Optional(t.String()),
       location:     t.String(),
-      image:        t.File()
+      images:       t.Files({ type: "image" })
     }),
     protected: true
   })
@@ -92,45 +104,66 @@ const Item = new Elysia({ prefix: "items" })
    */
   .put("/:id", async ({ body, error, params: { id }, prisma, user }) => {
   
-    const { title, description, status, type, image } = body;
+    const { title, description, status, type, images } = body;
     
     // Find original item
-    const tmp = await prisma.item.findUnique({
-      where: {
-        id: id
+    const originalItem = await prisma.item.findUnique({
+      where: { id: id },
+      include: {
+        images: true,
+        category: true,
       }
     });
 
     // If item doesn't exist
-    if(!tmp) {
+    if(!originalItem) {
       return error(404, {
         message: "Item not found"
       })
     }
 
-    let filename: string = "";
-    if(image) {
-      // Save image to file directory
-      filename = await saveFile(image);
+    let newImageFilenames: string[] = [];
+    if (images && images.length > 0) {
+      // Upload new images and collect their filenames
+      newImageFilenames = await Promise.all(
+        images.map(async (img) => await saveFile(img))
+      );
     }
 
-    // Update old item
-    const usr = await prisma.item.update({
-      where: {
-        id: id
-      },
+    // Update item with new data and images
+    const updatedItem = await prisma.item.update({
+      where: { id: id },
       data: {
-        // replace
-        title:        title ? title : tmp.title,
-        description:  description ? description : tmp.description,
-        status:       status ? status : tmp.status,
-        type:         type ? type : tmp.type,
-        image:        image ? filename : tmp.image
+        // Update basic fields with new values or keep existing
+        title:        title       ? title         : originalItem.title,
+        description:  description ? description   : originalItem.description,
+        status:       status      ? status        : originalItem.status,
+        type:         type        ? type          : originalItem.type,
+        
+        images: {
+          // Disconnect all existing images
+          deleteMany: {},
+          
+          // Create new image records if new images were uploaded
+          ...(newImageFilenames.length > 0 ? {
+            create: newImageFilenames.map((filename) => ({ 
+              filename: filename 
+            }))
+          } : {})
+        }
+      },
+      // Include images in the return to confirm the update
+      include: {
+        images: {
+          select: {
+            filename: true
+          }
+        }
       }
     });
 
     return {
-      data: usr
+      data: updatedItem
     }
 
   }, {
@@ -139,7 +172,7 @@ const Item = new Elysia({ prefix: "items" })
       description:  t.Optional(t.String()),
       status:       t.Optional(t.String()),
       type:         t.Optional(t.String()),
-      image:        t.Optional(t.File())
+      images:       t.Optional(t.Files())
     })
   })
   .delete("/:id", async ({ params: { id }, prisma }) => {
