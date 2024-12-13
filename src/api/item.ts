@@ -5,11 +5,6 @@ import Auth from "../session";
 
 const Item = new Elysia({ prefix: "items" })
   .decorate("prisma", new PrismaClient())
-  .model({
-    item: t.Object({
-
-    })
-  })
   .use(Auth)
   /**
    * Read list of all items.
@@ -69,7 +64,8 @@ const Item = new Elysia({ prefix: "items" })
       title:        t.String(),
       description:  t.String(),
       status:       t.Optional(t.String()),
-      type:         t.Optional(t.String())
+      type:         t.Optional(t.String()),
+      images:       t.File({ type: "image/*" })
     }),
     protected: true
   })

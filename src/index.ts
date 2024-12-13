@@ -7,7 +7,7 @@ import Session from "./session";
 import Logging from "./logging";
 
 // Routes
-import User from "./api/users";
+import User from "./api/user";
 import Item from "./api/item";
 
 const app = new Elysia()
