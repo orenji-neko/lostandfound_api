@@ -1,8 +1,5 @@
 import { Elysia, t } from "elysia";
 import { PrismaClient } from "@prisma/client";
-import { randomBytes } from 'crypto';
-import { mkdir, writeFile } from 'fs/promises';
-import path from 'path';
 
 import Session from "../plugins/session";
 import { saveFile } from "../utils/file";
@@ -16,7 +13,12 @@ const Item = new Elysia({ prefix: "items" })
   .get("/", async ({ user, prisma }) => {
 
     // Find list of items
-    const items = await prisma.item.findMany();
+    const items = await prisma.item.findMany({
+      include: {
+        createdBy: true,
+        category: true
+      }
+    });
 
     return {
       data: items 
@@ -32,6 +34,10 @@ const Item = new Elysia({ prefix: "items" })
     const item = await prisma.item.findUnique({
       where: {
         id: id
+      },
+      include: {
+        category: true,
+        createdBy: true
       }
     });
 
@@ -44,7 +50,7 @@ const Item = new Elysia({ prefix: "items" })
    * Create an item.
    */
   .post("/", async ({ body, prisma, user }) => {
-    const { title, description, status, type, image } = body;
+    const { title, description, status, type, image, location } = body;
 
     // Save image to file directory
     const filename = await saveFile(image);
@@ -57,6 +63,7 @@ const Item = new Elysia({ prefix: "items" })
         status:       status ? status : "Unknown",
         type:         type ? type : "Unknown",
         image:        filename, // Store the hashed filename
+        location:     location ? location : "Unknown",
         createdBy: {
           connect: {
             id:       user?.id // currently logged in user is made as creator of item
@@ -75,6 +82,7 @@ const Item = new Elysia({ prefix: "items" })
       description:  t.String(),
       status:       t.Optional(t.String()),
       type:         t.Optional(t.String()),
+      location:     t.String(),
       image:        t.File()
     }),
     protected: true
