@@ -1,10 +1,75 @@
 import { Elysia, t } from "elysia";
-import Auth from "../auth";
+import Session from "../session";
 import { PrismaClient, Prisma, User } from "@prisma/client";
 
 const User = new Elysia({ prefix: "users" })
   .decorate("prisma", new PrismaClient())
-  .use(Auth)
+  .use(Session)
+  .post("/login", async ({ error, prisma, jwt, body: { email, password }, cookie: { token }, set }) => {
+
+    const user = await prisma.user.findUnique({
+      where: {
+        email: email
+      }
+    });
+
+    // No user
+    if(!user) {
+      return error(404, {
+        message: "No user found with this email"
+      })
+    }
+
+    // compare password
+    const isEqual = await Bun.password.verify(password, user.password);
+    if(!isEqual) {
+      return error(404, {
+        message: "Invalid password"
+      })
+    }
+
+    token.value = await jwt.sign({
+      id: user.id,
+      email: user.email
+    });
+
+    set.status = 200
+    return {
+      message: "Authentication success"
+    }
+    
+  }, {
+    body: "login"
+  })
+  .post("/register", async ({ body, error, prisma }) => {
+    
+    try {
+      const { email, password, lastname, firstname, phone } = body;
+      const user = await prisma.user.create({
+        data: {
+          email: email,
+          password: await Bun.password.hash(password, "bcrypt"),
+          lastname: lastname,
+          firstname: firstname,
+          phone: phone
+        }
+      });
+
+      return {
+        message: "Registration success",
+        data: user
+      }
+    }
+    catch(err) {
+
+      return error(500, {
+        message: "Registration failed"
+      })
+    }
+
+  }, {
+    body: "register"
+  })
   /**
    * Get a list of users
    */
