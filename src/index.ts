@@ -9,6 +9,7 @@ import Logging from "./logging";
 // Routes
 import User from "./api/user";
 import Item from "./api/item";
+import File from "./api/file";
 
 const app = new Elysia()
   .use(swagger())     // endpoint documentation
@@ -16,6 +17,7 @@ const app = new Elysia()
   .use(Session)       // Login API
   .use(User)          // User API
   .use(Item)          // Item API
+  .use(File)          // File API
   .listen({hostname: "127.0.0.1", port: 3000});
 
 console.log(

@@ -29,6 +29,7 @@ model Item {
   description String    
   status      String    @default("Unknown")
   type        String
+  image       String?
 
   created_at  DateTime  @default(now())
   
